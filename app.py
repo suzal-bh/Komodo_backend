@@ -13,8 +13,16 @@ load_dotenv(BASE_DIR / ".env")
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-this-to-a-random-string")
 
-#allow Next.js dev server to call Flask
-CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True
+)
+
+CORS(app, origins=[
+    "http://localhost:3000",
+    "https://komodo-hub-5005-cmd.vercel.app"
+], supports_credentials=True)
+
 
 
 def get_conn():
