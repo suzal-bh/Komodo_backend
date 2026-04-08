@@ -26,11 +26,11 @@ def get_conn():
 
     return mysql.connector.connect(
         host=host,
+        port=port,
         user=user,
         password=password,
         database=dbname,
-        port=port,
-        ssl_ca="ca.pem"
+        ssl_disabled=False
     )
 
 
@@ -99,102 +99,6 @@ def logout():
     session.pop("user", None)
     return jsonify({"ok": True})
 
-@app.get("/api/debug-tables")
-def debug_tables():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SHOW TABLES")
-    tables = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify({"tables": tables})
 
-@app.get("/api/debug-users")
-def debug_users():
-    conn = get_conn()
-    cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM users")
-    users = cur.fetchall()
-    cur.close()
-    conn.close()
-    return {"users": users}
-
-@app.get("/api/import-db")
-def import_db():
-    conn = get_conn()
-    cur = conn.cursor()
-
-    sql_path = BASE_DIR / "DB.sql"
-
-    with open(sql_path, "r", encoding="utf-8") as f:
-        sql = f.read()
-
-    try:
-        # ✅ Disable FK checks
-        cur.execute("SET FOREIGN_KEY_CHECKS=0")
-
-        # ✅ Split and execute
-        statements = sql.split(";")
-        for statement in statements:
-            stmt = statement.strip()
-            if stmt:
-                try:
-                    cur.execute(stmt)
-                except Exception as e:
-                    print("Skipping error:", e)
-
-        # ✅ Re-enable FK checks
-        cur.execute("SET FOREIGN_KEY_CHECKS=1")
-
-        conn.commit()
-        return {"status": "Database imported (with skips if needed)"}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-    finally:
-        cur.close()
-        conn.close()
-
-@app.get("/api/create-test-user")
-def create_test_user():
-    conn = get_conn()
-    cur = conn.cursor()
-
-    password = "test123"
-    hashed = hashlib.sha256(password.encode()).hexdigest()
-
-    cur.execute("""
-        INSERT INTO users (full_name, email, password_hash, role_id, organization_id)
-        VALUES (%s, %s, %s, %s, %s)
-    """, ("New User", "new@example.com", hashed, 1, 1))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"status": "user created"}
-
-@app.get("/api/reset-db")
-def reset_db():
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("SET FOREIGN_KEY_CHECKS=0")
-
-    cur.execute("SHOW TABLES")
-    tables = cur.fetchall()
-
-    for table in tables:
-        cur.execute(f"DROP TABLE {table[0]}")
-
-    cur.execute("SET FOREIGN_KEY_CHECKS=1")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"status": "Database cleared"}
-    
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
